@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fraud Shield | Transaction</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=1" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand-lockup">
+      <div class="brand-badge">F</div>
+      <div>
+        <p class="eyebrow">Fraud Shield</p>
+        <h1>Transaction analysis</h1>
+      </div>
+    </div>
+
+    <div class="user-card">
+      <div class="avatar">{{ current_user.initials }}</div>
+      <div>
+        <strong>{{ current_user.name }}</strong>
+        <span>{{ current_user.role }}</span>
+      </div>
+    </div>
+
+    <a class="side-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+    <a class="side-link active" href="#summary">Transaction</a>
+    <a class="side-link danger" href="{{ url_for('main.logout') }}">Logout</a>
+
+    <div class="status-card">
+      <p>Model status</p>
+      <ul>
+        <li>XGBoost: {{ 'Loaded' if model_status.xgboost else 'Offline' }}</li>
+        <li>LightGBM: {{ 'Loaded' if model_status.lightgbm else 'Offline' }}</li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header class="topbar transaction-topbar">
+      <div>
+        <p class="eyebrow">Case detail</p>
+        <h2 id="transaction-title">Transaction {{ transaction.TransactionID or transaction.transaction_id }}</h2>
+      </div>
+      <div class="topbar-metrics">
+        <div><strong id="txn-score">{{ fraud_score }}%</strong><span>Fraud score</span></div>
+        <div><strong id="txn-label">{{ transaction.fraud_label or 'Low' }}</strong><span>Label</span></div>
+        <div><strong id="txn-status">{{ transaction.status or 'ACTIVE' }}</strong><span>Status</span></div>
+        <div><strong id="txn-risk">{{ risk_tier }}</strong><span>Risk tier</span></div>
+      </div>
+    </header>
+
+    <section class="transaction-layout" id="summary">
+      <article class="panel transaction-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Transaction</p>
+            <h3>Important details</h3>
+          </div>
+          <a class="ghost-btn inline-link" href="{{ url_for('main.dashboard') }}">Back to dashboard</a>
+        </div>
+        <p id="transaction-message" class="merchant-message"></p>
+        <div id="transaction-fields" class="detail-list">
+          <div class="detail-block">
+            <h4>Key fields</h4>
+            <div class="detail-grid">
+              <div class="detail-item"><span>Transaction ID</span><strong>{{ transaction.TransactionID or transaction.transaction_id }}</strong></div>
+              <div class="detail-item"><span>Transaction Amount</span><strong>${{ transaction.TransactionAmt or transaction.amount }}</strong></div>
+              <div class="detail-item"><span>ProductCD</span><strong>{{ transaction.ProductCD or '-' }}</strong></div>
+              <div class="detail-item"><span>Card Network</span><strong>{{ transaction.card_network or '-' }}</strong></div>
+              <div class="detail-item"><span>Card ID</span><strong>{{ transaction.card_id or '-' }}</strong></div>
+              <div class="detail-item"><span>isFraud (Dataset)</span><strong>{{ transaction.isFraud if transaction.isFraud is not none else '-' }}</strong></div>
+              <div class="detail-item"><span>Timestamp</span><strong>{{ transaction.TransactionDT or transaction.timestamp or '-' }}</strong></div>
+              <div class="detail-item"><span>Status</span><strong>{{ transaction.status or 'ACTIVE' }}</strong></div>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <h4>Analysis summary</h4>
+            <div class="detail-grid">
+              <div class="detail-item"><span>Fraud score</span><strong>{{ fraud_score }}%</strong></div>
+              <div class="detail-item"><span>Risk tier</span><strong>{{ risk_tier }}</strong></div>
+              <div class="detail-item"><span>Fraud label</span><strong>{{ transaction.fraud_label or 'Low' }}</strong></div>
+              <div class="detail-item"><span>Fraud type</span><strong>{{ transaction.fraud_type or 'Suspicious' }}</strong></div>
+              <div class="detail-item"><span>Probability</span><strong>{{ transaction.raw_probability if transaction.raw_probability is not none else '-' }}</strong></div>
+              <div class="detail-item"><span>Latency</span><strong>{{ transaction.latency_ms if transaction.latency_ms is not none else '-' }} ms</strong></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel result-panel transaction-analysis" id="transaction-card" data-risk="low">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Analysis</p>
+            <h3>Fraud signal</h3>
+          </div>
+          <span class="pill pill-low" id="risk-pill">{{ transaction.risk_tier }}</span>
+        </div>
+
+        <div class="gauge-wrap">
+          <svg id="fraudGaugeSvg" viewBox="0 0 220 220" aria-label="Fraud score gauge">
+            <circle cx="110" cy="110" r="90" class="gauge-track"></circle>
+            <circle cx="110" cy="110" r="90" class="gauge-arc" id="gaugeArc"></circle>
+          </svg>
+          <div class="gauge-center">
+            <strong id="fraudScoreText">{{ fraud_score }}</strong>
+            <span>%</span>
+          </div>
+        </div>
+
+        <div class="result-copy">
+          <div>
+            <span>Fraud label</span>
+            <strong id="fraudLabelText">{{ transaction.fraud_label or 'Low' }}</strong>
+          </div>
+          <div>
+            <span>Fraud type</span>
+            <strong id="fraudTypeText">{{ transaction.fraud_type or 'Suspicious' }}</strong>
+          </div>
+          <div>
+            <span>Transaction ID</span>
+            <strong id="transactionIdText">{{ transaction.TransactionID or transaction.transaction_id }}</strong>
+          </div>
+          <div>
+            <span>Status</span>
+            <strong id="transactionStatusText">{{ transaction.status or 'ACTIVE' }}</strong>
+          </div>
+        </div>
+
+        <div class="model-bars" id="model-bars">
+          <div class="bar-row"><span>XGBoost</span><div class="bar"><i style="width:0%"></i></div><strong>0%</strong></div>
+          <div class="bar-row"><span>LightGBM</span><div class="bar"><i style="width:0%"></i></div><strong>0%</strong></div>
+          <div class="bar-row highlight"><span>Ensemble</span><div class="bar"><i style="width:0%"></i></div><strong>0%</strong></div>
+        </div>
+
+        <div class="merchant-actions transaction-actions">
+          <button id="action-safe" class="action-btn action-safe" type="button">Mark safe</button>
+          <button id="action-flag" class="action-btn action-flag" type="button">Flag</button>
+          <button id="action-review" class="action-btn action-block" type="button">Review</button>
+          <button id="action-block" class="action-btn action-block" type="button">Block</button>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script id="dashboard-config" type="application/json">{{ {'user': current_user, 'model_status': model_status} | tojson }}</script>
+  <script id="transaction-data" type="application/json">{{ transaction | tojson }}</script>
+  <script>
+    const FRAUD_SCORE = {{ fraud_score | default(0) }};
+  </script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
