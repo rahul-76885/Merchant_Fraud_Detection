@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fraud Shield | Sign In</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
+</head>
+<body>
+  <main class="shell">
+    <section class="brand-panel">
+      <div class="brand-badge">M</div>
+      <p class="eyebrow">Fraud Shield Console</p>
+      <h1>Open the transaction casebook and triage risk fast.</h1>
+      <p class="lead">
+        Sign in with the single admin account to review transactions, inspect the model output, and apply controls from one place.
+      </p>
+      <div class="stats-grid">
+        <div class="stat-card"><strong>2</strong><span>Trained models</span></div>
+        <div class="stat-card"><strong>1</strong><span>Preprocessor</span></div>
+        <div class="stat-card"><strong>1</strong><span>SQLite history store</span></div>
+      </div>
+    </section>
+
+    <section class="login-panel">
+      <div class="card">
+        <div class="card-top">
+          <p class="eyebrow">Secure admin access</p>
+          <h2>Sign in</h2>
+          <p>Use the Fraud Shield admin account to open the dashboard.</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-stack">
+              {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form class="login-form" action="{{ url_for('main.login') }}" method="POST">
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" placeholder="admin@fraudshield.ai" autocomplete="email" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
+          </label>
+          <button type="submit">Open dashboard</button>
+        </form>
+
+        <div class="footer-note">
+          Default demo login: admin@fraudshield.ai / admin123
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>

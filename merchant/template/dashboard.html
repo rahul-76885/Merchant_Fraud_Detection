@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fraud Shield | Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand-lockup">
+      <div class="brand-badge">F</div>
+      <div>
+        <p class="eyebrow">Fraud Shield</p>
+        <h1>Transaction dashboard</h1>
+      </div>
+    </div>
+
+    <div class="user-card">
+      <div class="avatar">{{ current_user.initials }}</div>
+      <div>
+        <strong>{{ current_user.name }}</strong>
+        <span>{{ current_user.role }}</span>
+      </div>
+    </div>
+
+    <a class="side-link active" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+    <a class="side-link" href="#search-panel">Search</a>
+    <a class="side-link" href="#history">History</a>
+    <a class="side-link danger" href="{{ url_for('main.logout') }}">Logout</a>
+
+    <div class="status-card">
+      <p>Model status</p>
+      <ul>
+        <li>XGBoost: {{ 'Loaded' if model_status.xgboost else 'Offline' }}</li>
+        <li>LightGBM: {{ 'Loaded' if model_status.lightgbm else 'Offline' }}</li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Real-time fraud scoring</p>
+        <h2>Search by TransactionID and open the live case file.</h2>
+      </div>
+      <div class="topbar-metrics">
+        <div><strong>{{ dashboard_summary.total_transactions }}</strong><span>Total</span></div>
+        <div><strong>{{ dashboard_summary.fraud_count }}</strong><span>Fraud</span></div>
+        <div><strong>{{ dashboard_summary.suspicious_count }}</strong><span>Suspicious</span></div>
+        <div><strong>{{ dashboard_summary.fraud_percent }}%</strong><span>Fraud rate</span></div>
+      </div>
+    </header>
+
+    <section class="panel" id="search-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Lookup</p>
+          <h3>Search a transaction</h3>
+        </div>
+      </div>
+
+      <form id="search-form" class="merchant-search-row">
+        <input id="txn-input" type="text" placeholder="Enter TransactionID" required />
+        <button class="ghost-btn" type="submit">Open case</button>
+      </form>
+
+      <div id="search-message" class="merchant-message"></div>
+    </section>
+
+    <section class="hero-grid">
+      <article class="panel result-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Overview</p>
+            <h3>Current risk posture</h3>
+          </div>
+          <span class="pill neutral">Live</span>
+        </div>
+
+        <div class="result-copy">
+          <div>
+            <span>Average score</span>
+            <strong>{{ dashboard_summary.average_score }}%</strong>
+          </div>
+          <div>
+            <span>High risk</span>
+            <strong>{{ dashboard_summary.high_risk }}</strong>
+          </div>
+          <div>
+            <span>Medium risk</span>
+            <strong>{{ dashboard_summary.medium_risk }}</strong>
+          </div>
+          <div>
+            <span>Low risk</span>
+            <strong>{{ dashboard_summary.low_risk }}</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Workflow</p>
+            <h3>How the case flow works</h3>
+          </div>
+        </div>
+        <div class="result-copy">
+          <div>
+            <span>Search</span>
+            <strong>Enter a TransactionID</strong>
+          </div>
+          <div>
+            <span>Review</span>
+            <strong>Open the detail page</strong>
+          </div>
+          <div>
+            <span>Act</span>
+            <strong>Flag, review, or block</strong>
+          </div>
+          <div>
+            <span>Store</span>
+            <strong>History stays in SQLite</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="history-grid" id="history">
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Recent activity</p>
+            <h3>Latest transactions</h3>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Transaction ID</th>
+                <th>Amount</th>
+                <th>ProductCD</th>
+                <th>Card Network</th>
+                <th>Fraud</th>
+                <th>Fraud %</th>
+                <th>Risk tier</th>
+                <th>Trend</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="history-body">
+              {% for row in recent_transactions %}
+              <tr data-transaction-id="{{ row.transaction_id }}" class="history-row">
+                <td>{{ row.transaction_id }}</td>
+                <td>${{ '%.2f'|format(row.TransactionAmt or row.amount or 0) }}</td>
+                <td>{{ row.ProductCD }}</td>
+                <td>{{ row.card_network }}</td>
+                <td>{{ 'Yes' if row.isFraud else 'No' }}</td>
+                <td>{{ row.fraud_prob }}%</td>
+                <td><span class="pill pill-{{ 'high' if row.risk_tier == 'FRAUD' else 'medium' if row.risk_tier == 'SUSPICIOUS' else 'low' }}">{{ row.risk_tier }}</span></td>
+                <td>{{ row.trend }}</td>
+                <td>{{ row.timestamp }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script id="dashboard-config" type="application/json">{{ {'user': current_user, 'model_status': model_status, 'dashboard_summary': dashboard_summary} | tojson }}</script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
